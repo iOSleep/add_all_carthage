@@ -50,15 +50,28 @@ if !carthagePath.exists {
 // 获取所有的 version file
 let buildPath = carthagePath + Path("Build")
 var versioins: [Path] = []
+var names: [String] = []
 for path in try buildPath.children() {
     if let ex = path.extension , ex == "version"{
-        versioins.append(path)
+        let data: Data = try path.read()
+        let dic = try JSONSerialization.jsonObject(with: data, options: JSONSerialization.ReadingOptions.allowFragments) as! Dictionary<String, Any>
+        if let arr: Array = dic["iOS"] as? Array<Dictionary<String, String>> {
+            for framework in arr {
+                if let name = framework["name"] {
+                    names.append(name)
+                }
+            }
+        }
     }
 }
 
+print("framework names in carthage/build\n: \(names)".yellow)
 
 
-//let files = try FileManager.default.contentsOfDirectory(atPath: dirPath.absolute().string)
-//
-//print(files)
+
+
+
+
+
+
 

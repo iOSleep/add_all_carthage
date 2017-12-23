@@ -11,6 +11,15 @@
         }
       },
       {
+        "package": "CommandLine",
+        "repositoryURL": "https://github.com/iOSleep/CommandLine/",
+        "state": {
+          "branch": "swift4-default",
+          "revision": "69e9d778624618885a27dc14ef9dd4f55f4c1782",
+          "version": null
+        }
+      },
+      {
         "package": "Commandant",
         "repositoryURL": "https://github.com/Carthage/Commandant",
         "state": {

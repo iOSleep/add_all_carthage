@@ -5,12 +5,18 @@ import PathKit
 import xcproj
 
 
+enum PlatForm: String {
+    case ios = "iOS"
+    case mac = "Mac"
+}
+
 let cli = CommandLineKit.CommandLine()
+// 项目路径
 let projectOption = StringOption(longFlag: "project", helpMessage: "path to dir where *.xcodeproj in")
-
-let platformOption = StringOption(longFlag: "platform", helpMessage: "you can select ios or mac")
-
-let helpOption = BoolOption(longFlag: "help", helpMessage: "Prints a help message.")
+// 平台配置
+let platformOption = EnumOption<PlatForm>(longFlag: "platform", helpMessage: "iOS or Mac")
+// 帮助提示。。
+let helpOption = BoolOption(longFlag: "help", helpMessage: "default --project . --platform iOS")
 
 cli.addOptions(projectOption, platformOption, helpOption)
 
@@ -41,15 +47,24 @@ if helpOption.value {
     exit(EX_OK)
 }
 
-// 获取绝对路径
-let dir = projectOption.value ?? "/Users/maxu/Desktop/TestDemo"
+// 获取版本
+var platform: String = PlatForm.ios.rawValue
+
+if let pl = platformOption.value {
+    platform = pl.rawValue
+}
+
+// 获取路径，没有填写默认当前路径
+let dir = projectOption.value ?? "."
 let dirPath = Path(dir)
 let carthagePath = dirPath + Path("Carthage")
+print(carthagePath)
 if !carthagePath.exists {
     print("Carthage File Not Exist".red)
     exit(EX_OK)
 }
 
+// readline 选取 *.xcodeproj
 print("get all proj s".green)
 var projs:[Path] = []
 var num = 1
@@ -78,6 +93,8 @@ while true {
     break
 }
 
+// 开始解析xcproj
+print("begin parse xcodeproj")
 let proj = try XcodeProj.init(path: projs[selectNum-1])
 
 var carthagePhase: PBXShellScriptBuildPhase?
@@ -104,7 +121,7 @@ for path in try buildPath.children() {
     if let ex = path.extension , ex == "version"{
         let data: Data = try path.read()
         let dic = try JSONSerialization.jsonObject(with: data, options: JSONSerialization.ReadingOptions.allowFragments) as! Dictionary<String, Any>
-        if let arr: Array = dic["iOS"] as? Array<Dictionary<String, String>> {
+        if let arr: Array = dic[platform] as? Array<Dictionary<String, String>> {
             for framework in arr {
                 if let name = framework["name"] {
                     names.append(name+".framework")
@@ -116,24 +133,28 @@ for path in try buildPath.children() {
 
 print("framework names in carthage/build\n: \(names)".yellow)
 
+// 设置默认的基本信息
 let name = "Carthage"
 let shellScript = "/usr/local/bin/carthage copy-frameworks"
-let inputs = names.map { "$(SRCROOT)/Carthage/Build/iOS/\($0)" }
+let inputs = names.map { "$(SRCROOT)/Carthage/Build/\(platform)/\($0)" }
 let outpus = names.map { "$(BUILT_PRODUCTS_DIR)/$(FRAMEWORKS_FOLDER_PATH)/\($0)" }
+// 瞎写的。。。毕竟就这一个地方用到了
+let ref = "YUDJENHDLE8736493836KDIX"
 
-proj.pbxproj.nativeTargets.forEach({ (target) in
-    print(target.buildPhases)
-})
+//proj.pbxproj.nativeTargets.forEach({ (target) in
+//    print(target.buildPhases)
+//})
 
 if carthagePhase == nil {
-    selectProjStr = ""
+    // 需要手动添加 target 的 buildPhases
+    var selectTarget = ""
     num = 1
     proj.pbxproj.nativeTargets.forEach{ (target) in
-        selectProjStr += String(num) + ". " + target.name + "\n"
+        selectTarget += String(num) + ". " + target.name + "\n"
         num += 1
     }
 
-    print("please select target\n \(selectProjStr)")
+    print("please select target\n \(selectTarget)")
     var targetNum = 0
     while true {
         let str = readLine()
@@ -145,21 +166,19 @@ if carthagePhase == nil {
         break
     }
     let target = proj.pbxproj.nativeTargets[targetNum-1]
-    let ref = "YUDJENHDLE8736493836KDIX"
     target.buildPhases.append(ref)
     
     let phase = PBXShellScriptBuildPhase.init(reference: ref, files: [], inputPaths: inputs, outputPaths: outpus, shellScript: shellScript)
     phase.name = name
     proj.pbxproj.addObject(phase)
 }
-
-if carthagePhase != nil {
+else {
     carthagePhase?.name = "Carthage"
     carthagePhase?.inputPaths = inputs
     carthagePhase?.outputPaths = outpus
     carthagePhase?.shellScript = shellScript
 }
 
-
+// 写入文件
 try proj.write(path: projs[selectNum-1])
 

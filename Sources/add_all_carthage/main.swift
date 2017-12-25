@@ -77,7 +77,6 @@ while true {
     selectNum = num
     break
 }
-let space = Path.init("/Users/maxu/Desktop/TestDemo/TestDemo.xcworkspace")
 
 let proj = try XcodeProj.init(path: projs[selectNum-1])
 
@@ -122,43 +121,35 @@ let shellScript = "/usr/local/bin/carthage copy-frameworks"
 let inputs = names.map { "$(SRCROOT)/Carthage/Build/iOS/\($0)" }
 let outpus = names.map { "$(BUILT_PRODUCTS_DIR)/$(FRAMEWORKS_FOLDER_PATH)/\($0)" }
 
-
-func base64String(from uuid: UUID) -> String {
-    var result = Data()
-    let uuidTuple = uuid.uuid
-    result.append(uuidTuple.0)
-    result.append(uuidTuple.1)
-    result.append(uuidTuple.2)
-    result.append(uuidTuple.3)
-    result.append(uuidTuple.4)
-    result.append(uuidTuple.5)
-    result.append(uuidTuple.6)
-    result.append(uuidTuple.7)
-    result.append(uuidTuple.8)
-    result.append(uuidTuple.9)
-    result.append(uuidTuple.10)
-    result.append(uuidTuple.11)
-    result.append(uuidTuple.12)
-    result.append(uuidTuple.13)
-    result.append(uuidTuple.14)
-    result.append(uuidTuple.15)
-    return result.base64EncodedString()
-}
-
 proj.pbxproj.nativeTargets.forEach({ (target) in
     print(target.buildPhases)
 })
 
-
 if carthagePhase == nil {
-    let phase = PBXShellScriptBuildPhase.init(reference: "YUDJENHDLE8736493836KDIX", files: [], inputPaths: inputs, outputPaths: outpus, shellScript: shellScript)
+    selectProjStr = ""
+    num = 1
+    proj.pbxproj.nativeTargets.forEach{ (target) in
+        selectProjStr += String(num) + ". " + target.name + "\n"
+        num += 1
+    }
+
+    print("please select target\n \(selectProjStr)")
+    var targetNum = 0
+    while true {
+        let str = readLine()
+        guard let str1 = str,  let num = Int(str1), num > 0 && num <= proj.pbxproj.nativeTargets.count else {
+            print("Please input a validate number".red)
+            continue
+        }
+        targetNum = num
+        break
+    }
+    let target = proj.pbxproj.nativeTargets[targetNum-1]
+    let ref = "YUDJENHDLE8736493836KDIX"
+    target.buildPhases.append(ref)
+    
+    let phase = PBXShellScriptBuildPhase.init(reference: ref, files: [], inputPaths: inputs, outputPaths: outpus, shellScript: shellScript)
     phase.name = name
-    
-//    phase.reference = base64String(from: UUID())
-//    let data = Data.init(bytes: UUID().uuid)
-    
-//    let tar = PBXNativeTarget(reference: <#T##String#>, buildConfigurationList: <#T##String#>, buildPhases: <#T##[String]#>, buildRules: <#T##[String]#>, dependencies: <#T##[String]#>, name: <#T##String#>)
-    
     proj.pbxproj.addObject(phase)
 }
 
